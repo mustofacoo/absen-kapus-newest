@@ -1,0 +1,24 @@
+{
+  "name": "Absen Kantor Pusat",
+  "short_name": "Absenkantor",
+  "description": "Aplikasi absensi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#26667F",
+  "theme_color": "#26667F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

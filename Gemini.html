@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Kantor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        /* Utility untuk menyembunyikan scrollbar tapi tetap bisa scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-slate-800 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
+        <i class="fas fa-info-circle"></i>
+        <span id="toast-msg">Bismillah</span>
+    </div>
+
+    <!-- LOGIN PAGE -->
+    <section id="login-page" class="min-h-screen flex items-center justify-center bg-slate-900 px-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden fade-in">
+            <div class="bg-orange-500 p-6 text-center">
+                <h1 class="text-2xl font-bold text-white">Absen Kantor Pusat</h1>
+                <p class="text-blue-100 text-sm">Ibnu Katsir</p>
+            </div>
+            
+            <div class="p-8">
+                <!-- Toggle Login Type -->
+                <div class="flex bg-gray-100 rounded p-1 mb-6">
+                    <button onclick="switchLogin('employee')" id="btn-login-employee" class="flex-1 py-2 text-sm font-medium rounded shadow bg-white text-orange-600 transition-all">Pegawai</button>
+                    <button onclick="switchLogin('admin')" id="btn-login-admin" class="flex-1 py-2 text-sm font-medium rounded text-orange-500 transition-all">Admin</button>
+                </div>
+
+                <!-- Form Pegawai -->
+                <form id="form-employee" onsubmit="handleEmployeeLogin(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-orange-500 mb-1">Bismillah</label>
+                        <input type="text" id="emp-username" class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="Masukkan username Anda" required>
+                    </div>
+                    <button type="submit" class="w-full bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition">Masuk Absen</button>
+                </form>
+
+                <!-- Form Admin -->
+                <form id="form-admin" class="hidden" onsubmit="handleAdminLogin(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1"></label>
+                        <input type="text" id="admin-username" class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="admin" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-1"></label>
+                        <input type="password" id="admin-password" class="w-full border border-slate-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500" placeholder="password" required>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-4 rounded transition">Masuk Dashboard</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- DASHBOARD LAYOUT (Shared for Admin & Employee) -->
+    <div id="dashboard-layout" class="hidden min-h-screen flex bg-slate-50">
+        
+        <!-- Sidebar -->
+     <aside class="w-64 bg-slate-900 text-slate-300 flex-col hidden md:flex fixed h-full transition-all z-40" id="sidebar">
+    <div class="h-16 flex items-center px-6 border-b border-slate-800">
+        <span class="text-xl font-bold text-white tracking-wider">ABSENSI</span>
+    </div>
+    
+    <nav class="flex-1 px-4 py-6 space-y-2">
+        <div id="admin-menu" class="hidden space-y-2">
+            <p class="text-xs uppercase text-slate-500 font-semibold pl-2 mb-2">Admin</p>
+            <button onclick="navTo('admin-employees')" class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-users w-5"></i> Pegawai
+            </button>
+            <button onclick="navTo('admin-recap')" class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-calendar-check w-5"></i> Rekap Absen
+            </button>
+            <button onclick="navTo('admin-personal')" class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-user-check w-5"></i> Rekap Personal
+            </button>
+        </div>
+
+        <div id="employee-menu" class="hidden space-y-2">
+            <p class="text-xs uppercase text-slate-500 font-semibold pl-2 mb-2">Pegawai</p>
+            <button onclick="navTo('emp-home')" class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-clock w-5"></i> Absen Hari Ini
+            </button>
+            <button onclick="navTo('emp-history')" class="w-full text-left px-4 py-2.5 rounded hover:bg-slate-800 hover:text-white transition flex items-center gap-3">
+                <i class="fas fa-history w-5"></i> Riwayat Saya
+            </button>
+        </div>
+    </nav>
+
+    <div class="p-4 border-t border-slate-800">
+        <button onclick="logout()" class="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 transition py-2">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+</aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 md:ml-64 min-h-screen flex flex-col">
+            <!-- Header Mobile -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-4 md:hidden z-30 sticky top-0">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="text-slate-600 focus:outline-none hover:text-slate-900">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <span class="font-bold text-slate-800">E-ABSENSI</span>
+                </div>
+                <button onclick="logout()" class="text-slate-500 hover:text-red-500">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </header>
+
+            <!-- Dynamic Content Area -->
+            <div class="p-4 md:p-8 overflow-y-auto" id="main-content">
+                <!-- Content injected via JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL TAMBAH/EDIT PEGAWAI -->
+    <div id="employee-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 fade-in">
+            <h2 class="text-xl font-bold mb-4" id="modal-title">Tambah Pegawai</h2>
+            <form onsubmit="saveEmployee(event)">
+                <input type="hidden" id="edit-id">
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-slate-700">Nama Lengkap</label>
+                    <input type="text" id="edit-name" class="w-full border rounded px-3 py-2" required>
+                </div>
+                <div class="mb-3">
+                    <label class="block text-sm font-medium text-slate-700">Posisi / Jabatan</label>
+                    <input type="text" id="edit-position" class="w-full border rounded px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700">Username (Untuk Login)</label>
+                    <input type="text" id="edit-username" class="w-full border rounded px-3 py-2" required>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="supabase.js"></script>
+    <script src="gemini.js"></script>
+</body>
+</html>
