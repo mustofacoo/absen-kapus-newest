@@ -17,6 +17,7 @@ async function initData() {
         
         // Ambil data dari Supabase
         state.users = await fetchUsers();
+        state.attendance = await fetchAttendance(); 
         
         // Jika tidak ada data, seed data awal
         if (state.users.length === 0) {
@@ -438,6 +439,8 @@ function renderAdminRecap(container) {
         }
         // --- ADMIN: PERSONAL RECAP ---
 
+// GANTI FUNGSI renderAdminPersonal yang ada dengan kode ini:
+
 function renderAdminPersonal(container) {
     const today = new Date();
     const currentMonth = today.toISOString().slice(0, 7);
@@ -475,8 +478,10 @@ function renderAdminPersonal(container) {
     let totalHadir = 0, totalTelat = 0, totalIzin = 0, totalAlpha = 0;
     const [year, month] = filterMonth.split('-');
     const daysInMonth = new Date(year, month, 0).getDate();
-    const todayStr = getTodayDateJakarta(); // ← PERBAIKAN
+    const todayStr = getTodayDateJakarta();
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
+    // Hitung statistik
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
         const record = userAttendance.find(a => a.date === dateStr);
@@ -494,9 +499,237 @@ function renderAdminPersonal(container) {
         }
     }
 
-    // ... sisanya sama, tapi pastikan semua penggunaan todayStr konsisten
-    
+    // Info Pegawai & Statistik
+    html += `
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex items-center gap-4 mb-6 pb-6 border-b">
+                <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center">
+                    <i class="fas fa-user text-blue-600 text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">${selectedUser.name}</h3>
+                    <p class="text-slate-500">${selectedUser.position}</p>
+                    <p class="text-xs text-slate-400 mt-1">Periode: ${formatMonthYear(filterMonth)}</p>
+                </div>
+            </div>
+
+            <!-- Statistik Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-4">
+                    <div class="text-green-600 text-xs font-semibold uppercase mb-1">Hadir</div>
+                    <div class="text-3xl font-bold text-green-700">${totalHadir}</div>
+                    <div class="text-green-500 text-sm mt-1">hari</div>
+                </div>
+
+                <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg p-4">
+                    <div class="text-yellow-600 text-xs font-semibold uppercase mb-1">Terlambat</div>
+                    <div class="text-3xl font-bold text-yellow-700">${totalTelat}</div>
+                    <div class="text-yellow-500 text-sm mt-1">hari</div>
+                </div>
+
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+                    <div class="text-blue-600 text-xs font-semibold uppercase mb-1">Izin/Sakit</div>
+                    <div class="text-3xl font-bold text-blue-700">${totalIzin}</div>
+                    <div class="text-blue-500 text-sm mt-1">hari</div>
+                </div>
+
+                <div class="bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-lg p-4">
+                    <div class="text-red-600 text-xs font-semibold uppercase mb-1">Alpha</div>
+                    <div class="text-3xl font-bold text-red-700">${totalAlpha}</div>
+                    <div class="text-red-500 text-sm mt-1">hari</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Absensi -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="p-4 bg-gradient-to-r from-slate-700 to-slate-800 border-b">
+                <h3 class="font-bold text-white">Detail Kehadiran Harian</h3>
+            </div>
+
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 border-b text-xs uppercase text-slate-500">
+                        <tr>
+                            <th class="p-4">Tanggal</th>
+                            <th class="p-4">Hari</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4">Jam</th>
+                            <th class="p-4">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+    `;
+
+    // Loop Detail Desktop
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
+        const dateObj = new Date(dateStr);
+        const dayName = dayNames[dateObj.getDay()];
+        const record = userAttendance.find(a => a.date === dateStr);
+
+        let status = '-';
+        let time = '-';
+        let note = '-';
+        let badgeColor = 'bg-slate-100 text-slate-600';
+        let rowClass = '';
+
+        if (record) {
+            status = record.status;
+            time = record.time;
+            note = record.note;
+            
+            if (status === 'Hadir') {
+                badgeColor = 'bg-green-100 text-green-800';
+                rowClass = 'bg-green-50/30';
+            } else if (status === 'Terlambat') {
+                badgeColor = 'bg-yellow-100 text-yellow-800';
+                rowClass = 'bg-yellow-50/30';
+            } else {
+                badgeColor = 'bg-blue-100 text-blue-800';
+                rowClass = 'bg-blue-50/30';
+            }
+        } else if (dateStr < todayStr) {
+            const isWeekend = (dayName === 'Sabtu' || dayName === 'Minggu');
+            if (isWeekend) {
+                status = 'Libur';
+                note = 'Hari Libur';
+                badgeColor = 'bg-slate-100 text-slate-500';
+                rowClass = 'bg-slate-50';
+            } else {
+                status = 'Alpha';
+                note = 'Tidak Hadir';
+                badgeColor = 'bg-red-100 text-red-800';
+                rowClass = 'bg-red-50/30';
+            }
+        } else {
+            status = 'Belum Absen';
+            badgeColor = 'bg-slate-100 text-slate-400';
+        }
+
+        const isToday = dateStr === todayStr;
+        if (isToday) rowClass += ' ring-2 ring-blue-400';
+
+        html += `
+            <tr class="hover:bg-slate-50 ${rowClass}">
+                <td class="p-4 font-medium">
+                    ${formatDate(dateStr)}
+                    ${isToday ? '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Hari Ini</span>' : ''}
+                </td>
+                <td class="p-4 ${dayName === 'Minggu' ? 'text-red-500 font-semibold' : dayName === 'Sabtu' ? 'text-blue-500 font-semibold' : 'text-slate-600'}">${dayName}</td>
+                <td class="p-4">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">${status}</span>
+                </td>
+                <td class="p-4 text-slate-600 font-mono">${time}</td>
+                <td class="p-4 text-slate-500">${note}</td>
+            </tr>
+        `;
+    }
+
+    html += `
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Cards -->
+            <div class="md:hidden divide-y divide-slate-100">
+    `;
+
+    // Loop Detail Mobile
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
+        const dateObj = new Date(dateStr);
+        const dayName = dayNames[dateObj.getDay()];
+        const record = userAttendance.find(a => a.date === dateStr);
+
+        let status = '-';
+        let time = '-';
+        let note = '-';
+        let badgeColor = 'bg-slate-100 text-slate-600';
+        let cardBg = '';
+
+        if (record) {
+            status = record.status;
+            time = record.time;
+            note = record.note;
+            
+            if (status === 'Hadir') {
+                badgeColor = 'bg-green-100 text-green-800';
+                cardBg = 'bg-green-50/50';
+            } else if (status === 'Terlambat') {
+                badgeColor = 'bg-yellow-100 text-yellow-800';
+                cardBg = 'bg-yellow-50/50';
+            } else {
+                badgeColor = 'bg-blue-100 text-blue-800';
+                cardBg = 'bg-blue-50/50';
+            }
+        } else if (dateStr < todayStr) {
+            const isWeekend = (dayName === 'Sabtu' || dayName === 'Minggu');
+            if (isWeekend) {
+                status = 'Libur';
+                note = 'Hari Libur';
+                badgeColor = 'bg-slate-100 text-slate-500';
+            } else {
+                status = 'Alpha';
+                note = 'Tidak Hadir';
+                badgeColor = 'bg-red-100 text-red-800';
+                cardBg = 'bg-red-50/50';
+            }
+        } else {
+            status = 'Belum Absen';
+            badgeColor = 'bg-slate-100 text-slate-400';
+        }
+
+        const isToday = dateStr === todayStr;
+
+        html += `
+            <div class="p-3 ${cardBg} ${isToday ? 'border-l-4 border-blue-500' : ''}">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-800">
+                            ${formatDate(dateStr)}
+                            ${isToday ? '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Hari Ini</span>' : ''}
+                        </div>
+                        <div class="text-xs ${dayName === 'Minggu' ? 'text-red-500 font-semibold' : dayName === 'Sabtu' ? 'text-blue-500 font-semibold' : 'text-slate-500'}">${dayName}</div>
+                    </div>
+                    <span class="px-2 py-1 rounded-full text-xs font-bold ${badgeColor}">${status}</span>
+                </div>
+                ${status !== 'Belum Absen' && status !== '-' ? `
+                <div class="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t border-slate-200">
+                    <div>
+                        <span class="text-slate-500 block">Jam</span>
+                        <span class="text-slate-800 font-mono">${time}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block">Ket</span>
+                        <span class="text-slate-800">${note}</span>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    html += `
+            </div>
+        </div>
+    `;
+
     container.innerHTML = html;
+}
+
+// Helper functions (jika belum ada di kode Anda)
+function formatDate(dateStr) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const [year, month, day] = dateStr.split('-');
+    return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+}
+
+function formatMonthYear(monthStr) {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const [year, month] = monthStr.split('-');
+    return `${months[parseInt(month) - 1]} ${year}`;
 }
 
         function changePersonalUser(userId) {
