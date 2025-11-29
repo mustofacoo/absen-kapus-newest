@@ -11,9 +11,12 @@
         // Seed Initial Data if Empty
 async function initData() {
     try {
+        console.log('Initializing app...');
+        console.log('Current date (Jakarta):', getTodayDateJakarta());
+        console.log('Current time (Jakarta):', getCurrentTimeJakarta());
+        
         // Ambil data dari Supabase
         state.users = await fetchUsers();
-        state.attendance = await fetchAttendance();
         
         // Jika tidak ada data, seed data awal
         if (state.users.length === 0) {
@@ -282,7 +285,7 @@ html += `
 
 function renderAdminRecap(container) {
     const today = new Date();
-    const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
+    const currentMonth = today.toISOString().slice(0, 7);
     
     const filterMonth = window.currentFilterMonth || currentMonth;
     window.currentFilterMonth = filterMonth;
@@ -305,7 +308,6 @@ function renderAdminRecap(container) {
 
     html += `
     <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
-        <!-- Desktop View -->
         <div class="hidden md:block overflow-x-auto">
             <table class="w-full text-left border-collapse whitespace-nowrap">
                 <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
@@ -321,115 +323,113 @@ function renderAdminRecap(container) {
                 <tbody class="text-sm divide-y divide-slate-100">
 `;
 
-state.users.forEach(u => {
-    let hadir = 0, telat = 0, izin = 0, alpha = 0;
-    let dailyCells = '';
+    state.users.forEach(u => {
+        let hadir = 0, telat = 0, izin = 0, alpha = 0;
+        let dailyCells = '';
 
-    dates.forEach(d => {
-        const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const record = state.attendance.find(a => a.user_id === u.id && a.date === dateStr);
-        
-        let cell = '';
-        
-        if (record) {
-            if (record.status === 'Hadir') {
-                cell = '<span class="text-green-600 font-bold" title="Hadir">●</span>';
-                hadir++;
-            } else if (record.status === 'Terlambat') {
-                cell = '<span class="text-yellow-500 font-bold" title="Terlambat: '+record.time+'">T</span>';
-                telat++;
-            } else {
-                cell = '<span class="text-blue-500 font-bold" title="'+record.status+': '+record.note+'">I</span>';
-                izin++;
-            }
-        } else {
-            const dayOfWeek = new Date(dateStr).getDay();
-            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        dates.forEach(d => {
+            const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
+            const todayStr = getTodayDateJakarta(); // ← PERBAIKAN: gunakan fungsi Jakarta
+            const record = state.attendance.find(a => a.user_id === u.id && a.date === dateStr);
             
-            if (dateStr < todayStr) {
-                if (isWeekend) {
-                    cell = '<span class="text-slate-300" title="Libur (Sabtu/Minggu)">○</span>';
+            let cell = '';
+            
+            if (record) {
+                if (record.status === 'Hadir') {
+                    cell = '<span class="text-green-600 font-bold" title="Hadir">●</span>';
+                    hadir++;
+                } else if (record.status === 'Terlambat') {
+                    cell = '<span class="text-yellow-500 font-bold" title="Terlambat: '+record.time+'">T</span>';
+                    telat++;
                 } else {
-                    cell = '<span class="text-red-400 font-bold" title="Alpha">-</span>';
-                    alpha++;
+                    cell = '<span class="text-blue-500 font-bold" title="'+record.status+': '+record.note+'">I</span>';
+                    izin++;
                 }
             } else {
-                cell = '<span class="text-slate-200">.</span>';
+                const dayOfWeek = new Date(dateStr).getDay();
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                
+                if (dateStr < todayStr) {
+                    if (isWeekend) {
+                        cell = '<span class="text-slate-300" title="Libur (Sabtu/Minggu)">○</span>';
+                    } else {
+                        cell = '<span class="text-red-400 font-bold" title="Alpha">-</span>';
+                        alpha++;
+                    }
+                } else {
+                    cell = '<span class="text-slate-200">.</span>';
+                }
             }
-        }
-        dailyCells += `<td class="p-2 text-center border-l border-slate-100">${cell}</td>`;
-    });
+            dailyCells += `<td class="p-2 text-center border-l border-slate-100">${cell}</td>`;
+        });
 
-    html += `<tr class="hover:bg-slate-50">
-        <td class="p-3 font-medium sticky left-0 bg-white border-r z-10">${u.name}</td>
-        <td class="p-3 text-center font-bold text-green-700 bg-green-50">${hadir}</td>
-        <td class="p-3 text-center font-bold text-yellow-700 bg-yellow-50">${telat}</td>
-        <td class="p-3 text-center font-bold text-blue-700 bg-blue-50">${izin}</td>
-        <td class="p-3 text-center font-bold text-red-700 bg-red-50">${alpha}</td>
-        ${dailyCells}
-    </tr>`;
-});
-
-html += `
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Mobile View: Card Layout -->
-        <div class="md:hidden divide-y divide-slate-200">
-`;
-
-state.users.forEach(u => {
-    let hadir = 0, telat = 0, izin = 0, alpha = 0;
-
-    dates.forEach(d => {
-        const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const record = state.attendance.find(a => a.user_id === u.id && a.date === dateStr);
-        
-        if (record) {
-            if (record.status === 'Hadir') hadir++;
-            else if (record.status === 'Terlambat') telat++;
-            else izin++;
-        } else {
-            const dayOfWeek = new Date(dateStr).getDay();
-            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-            if (dateStr < todayStr && !isWeekend) alpha++;
-        }
+        html += `<tr class="hover:bg-slate-50">
+            <td class="p-3 font-medium sticky left-0 bg-white border-r z-10">${u.name}</td>
+            <td class="p-3 text-center font-bold text-green-700 bg-green-50">${hadir}</td>
+            <td class="p-3 text-center font-bold text-yellow-700 bg-yellow-50">${telat}</td>
+            <td class="p-3 text-center font-bold text-blue-700 bg-blue-50">${izin}</td>
+            <td class="p-3 text-center font-bold text-red-700 bg-red-50">${alpha}</td>
+            ${dailyCells}
+        </tr>`;
     });
 
     html += `
-        <div class="p-4">
-            <div class="font-semibold text-slate-800 mb-3">${u.name}</div>
-            <div class="grid grid-cols-4 gap-2 text-center text-xs">
-                <div class="bg-green-50 border border-green-200 rounded p-2">
-                    <div class="text-green-600 font-bold text-lg">${hadir}</div>
-                    <div class="text-green-700 mt-1">Hadir</div>
-                </div>
-                <div class="bg-yellow-50 border border-yellow-200 rounded p-2">
-                    <div class="text-yellow-600 font-bold text-lg">${telat}</div>
-                    <div class="text-yellow-700 mt-1">Telat</div>
-                </div>
-                <div class="bg-blue-50 border border-blue-200 rounded p-2">
-                    <div class="text-blue-600 font-bold text-lg">${izin}</div>
-                    <div class="text-blue-700 mt-1">Izin</div>
-                </div>
-                <div class="bg-red-50 border border-red-200 rounded p-2">
-                    <div class="text-red-600 font-bold text-lg">${alpha}</div>
-                    <div class="text-red-700 mt-1">Alpha</div>
+                </tbody>
+            </table>
+        </div>
+        <div class="md:hidden divide-y divide-slate-200">
+    `;
+
+    state.users.forEach(u => {
+        let hadir = 0, telat = 0, izin = 0, alpha = 0;
+
+        dates.forEach(d => {
+            const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
+            const todayStr = getTodayDateJakarta(); // ← PERBAIKAN
+            const record = state.attendance.find(a => a.user_id === u.id && a.date === dateStr);
+            
+            if (record) {
+                if (record.status === 'Hadir') hadir++;
+                else if (record.status === 'Terlambat') telat++;
+                else izin++;
+            } else {
+                const dayOfWeek = new Date(dateStr).getDay();
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                if (dateStr < todayStr && !isWeekend) alpha++;
+            }
+        });
+
+        html += `
+            <div class="p-4">
+                <div class="font-semibold text-slate-800 mb-3">${u.name}</div>
+                <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div class="bg-green-50 border border-green-200 rounded p-2">
+                        <div class="text-green-600 font-bold text-lg">${hadir}</div>
+                        <div class="text-green-700 mt-1">Hadir</div>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded p-2">
+                        <div class="text-yellow-600 font-bold text-lg">${telat}</div>
+                        <div class="text-yellow-700 mt-1">Telat</div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded p-2">
+                        <div class="text-blue-600 font-bold text-lg">${izin}</div>
+                        <div class="text-blue-700 mt-1">Izin</div>
+                    </div>
+                    <div class="bg-red-50 border border-red-200 rounded p-2">
+                        <div class="text-red-600 font-bold text-lg">${alpha}</div>
+                        <div class="text-red-700 mt-1">Alpha</div>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
-});
+        `;
+    });
 
-html += `
+    html += `
         </div>
     </div>
-`;
+    `;
 
-container.innerHTML = html;
+    container.innerHTML = html;
 }
 
         function changeRecapMonth(val) {
@@ -438,219 +438,66 @@ container.innerHTML = html;
         }
         // --- ADMIN: PERSONAL RECAP ---
 
-        function renderAdminPersonal(container) {
-            const today = new Date();
-            const currentMonth = today.toISOString().slice(0, 7);
-            
-            const filterMonth = window.currentPersonalMonth || currentMonth;
-            const filterUserId = window.currentPersonalUser || (state.users.length > 0 ? state.users[0].id : null);
-            
-            window.currentPersonalMonth = filterMonth;
-            window.currentPersonalUser = filterUserId;
+function renderAdminPersonal(container) {
+    const today = new Date();
+    const currentMonth = today.toISOString().slice(0, 7);
+    
+    const filterMonth = window.currentPersonalMonth || currentMonth;
+    const filterUserId = window.currentPersonalUser || (state.users.length > 0 ? state.users[0].id : null);
+    
+    window.currentPersonalMonth = filterMonth;
+    window.currentPersonalUser = filterUserId;
 
-            let html = `
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 fade-in">
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Rekap Personal Detail</h2>
-                        <p class="text-slate-500 text-sm">Lihat detail absensi per pegawai</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select id="personal-user" onchange="changePersonalUser(this.value)" class="border rounded px-3 py-2 bg-white text-sm">
-                            ${state.users.map(u => `<option value="${u.id}" ${u.id == filterUserId ? 'selected' : ''}>${u.name}</option>`).join('')}
-                        </select>
-                        <input type="month" id="personal-month" value="${filterMonth}" onchange="changePersonalMonth(this.value)" class="border rounded px-3 py-2 bg-white text-sm">
-                    </div>
-                </div>
-            `;
-
-            if (!filterUserId) {
-                html += `<div class="bg-yellow-50 border border-yellow-200 rounded p-4 text-yellow-800">Belum ada pegawai terdaftar.</div>`;
-                container.innerHTML = html;
-                return;
-            }
-
-            const selectedUser = state.users.find(u => u.id == filterUserId);
-            const userAttendance = state.attendance.filter(a => a.user_id == filterUserId && a.date.startsWith(filterMonth)).sort((a, b) => a.date.localeCompare(b.date));
-
-            // Summary Statistics
-            let totalHadir = 0, totalTelat = 0, totalIzin = 0, totalAlpha = 0;
-            const [year, month] = filterMonth.split('-');
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const todayStr = new Date().toISOString().slice(0, 10);
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
-                const record = userAttendance.find(a => a.date === dateStr);
-                
-                if (record) {
-                    if (record.status === 'Hadir') totalHadir++;
-                    else if (record.status === 'Terlambat') totalTelat++;
-                    else totalIzin++;
-                } else if (dateStr < todayStr) {
-                    // Cek apakah weekend
-                    const dayOfWeek = new Date(dateStr).getDay();
-                    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-                    
-                    // Hanya hitung alpha jika bukan weekend
-                    if (!isWeekend) {
-                        totalAlpha++;
-                    }
-                }
-            }
-
-            html += `
-    <div class="bg-white rounded-lg shadow overflow-hidden fade-in">
-        <div class="p-4 bg-slate-50 border-b border-slate-200">
-            <h3 class="font-bold text-slate-800">${selectedUser.name}</h3>
-            <p class="text-sm text-slate-500">${selectedUser.position}</p>
-        </div>
-        
-        <!-- Desktop Table -->
-        <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-left">
-                <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
-                    <tr>
-                        <th class="p-4">Tanggal</th>
-                        <th class="p-4">Hari</th>
-                        <th class="p-4">Status</th>
-                        <th class="p-4">Jam</th>
-                        <th class="p-4">Keterangan</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-sm">
-`;
-
-const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-
-for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
-    const dateObj = new Date(dateStr);
-    const dayName = dayNames[dateObj.getDay()];
-    const record = userAttendance.find(a => a.date === dateStr);
-
-    let status = '-';
-    let time = '-';
-    let note = '-';
-    let badgeColor = 'bg-slate-100 text-slate-600';
-
-    if (record) {
-        status = record.status;
-        time = record.time;
-        note = record.note;
-        
-        if (status === 'Hadir') badgeColor = 'bg-green-100 text-green-800';
-        else if (status === 'Terlambat') badgeColor = 'bg-yellow-100 text-yellow-800';
-        else if (['Sakit', 'Izin', 'Dinas Luar'].includes(status)) badgeColor = 'bg-blue-100 text-blue-800';
-    } else if (dateStr < todayStr) {
-        const isWeekend = (dayName === 'Sabtu' || dayName === 'Minggu');
-        
-        if (isWeekend) {
-            status = 'Libur';
-            note = 'Sabtu/Minggu';
-            badgeColor = 'bg-slate-100 text-slate-500';
-        } else {
-            status = 'Alpha';
-            badgeColor = 'bg-red-100 text-red-800';
-        }
-    } else {
-        status = 'Belum Absen';
-        badgeColor = 'bg-slate-100 text-slate-400';
-    }
-
-    html += `
-        <tr class="hover:bg-slate-50">
-            <td class="p-4 text-slate-700 font-medium">${dateStr}</td>
-            <td class="p-4 text-slate-600">${dayName}</td>
-            <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${badgeColor}">${status}</span></td>
-            <td class="p-4 text-slate-600">${time}</td>
-            <td class="p-4 text-slate-500">${note}</td>
-        </tr>
-    `;
-}
-
-html += `
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Mobile Cards -->
-        <div class="md:hidden divide-y divide-slate-100">
-`;
-
-for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
-    const dateObj = new Date(dateStr);
-    const dayName = dayNames[dateObj.getDay()];
-    const record = userAttendance.find(a => a.date === dateStr);
-
-    let status = '-';
-    let time = '-';
-    let note = '-';
-    let badgeColor = 'bg-slate-100 text-slate-600';
-    let borderColor = 'border-slate-200';
-
-    if (record) {
-        status = record.status;
-        time = record.time;
-        note = record.note;
-        
-        if (status === 'Hadir') {
-            badgeColor = 'bg-green-100 text-green-800';
-            borderColor = 'border-green-200';
-        } else if (status === 'Terlambat') {
-            badgeColor = 'bg-yellow-100 text-yellow-800';
-            borderColor = 'border-yellow-200';
-        } else if (['Sakit', 'Izin', 'Dinas Luar'].includes(status)) {
-            badgeColor = 'bg-blue-100 text-blue-800';
-            borderColor = 'border-blue-200';
-        }
-    } else if (dateStr < todayStr) {
-        const isWeekend = (dayName === 'Sabtu' || dayName === 'Minggu');
-        
-        if (isWeekend) {
-            status = 'Libur';
-            note = 'Sabtu/Minggu';
-            badgeColor = 'bg-slate-100 text-slate-500';
-        } else {
-            status = 'Alpha';
-            badgeColor = 'bg-red-100 text-red-800';
-            borderColor = 'border-red-200';
-        }
-    } else {
-        status = 'Belum Absen';
-        badgeColor = 'bg-slate-100 text-slate-400';
-    }
-
-    html += `
-        <div class="p-3 hover:bg-slate-50">
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <div class="text-sm font-semibold text-slate-800">${dateStr}</div>
-                    <div class="text-xs text-slate-500">${dayName}</div>
-                </div>
-                <span class="px-2 py-1 rounded text-xs font-bold ${badgeColor}">${status}</span>
+    let html = `
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 fade-in">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800">Rekap Personal Detail</h2>
+                <p class="text-slate-500 text-sm">Lihat detail absensi per pegawai</p>
             </div>
-            <div class="grid grid-cols-2 gap-2 text-xs mt-2">
-                <div>
-                    <span class="text-slate-500">Jam:</span>
-                    <span class="text-slate-700 font-medium ml-1">${time}</span>
-                </div>
-                <div>
-                    <span class="text-slate-500">Ket:</span>
-                    <span class="text-slate-700 ml-1">${note}</span>
-                </div>
+            <div class="flex items-center gap-2">
+                <select id="personal-user" onchange="changePersonalUser(this.value)" class="border rounded px-3 py-2 bg-white text-sm">
+                    ${state.users.map(u => `<option value="${u.id}" ${u.id == filterUserId ? 'selected' : ''}>${u.name}</option>`).join('')}
+                </select>
+                <input type="month" id="personal-month" value="${filterMonth}" onchange="changePersonalMonth(this.value)" class="border rounded px-3 py-2 bg-white text-sm">
             </div>
         </div>
     `;
-}
 
-html += `
-        </div>
-    </div>
-`;
+    if (!filterUserId) {
+        html += `<div class="bg-yellow-50 border border-yellow-200 rounded p-4 text-yellow-800">Belum ada pegawai terdaftar.</div>`;
+        container.innerHTML = html;
+        return;
+    }
 
-container.innerHTML = html;
+    const selectedUser = state.users.find(u => u.id == filterUserId);
+    const userAttendance = state.attendance.filter(a => a.user_id == filterUserId && a.date.startsWith(filterMonth)).sort((a, b) => a.date.localeCompare(b.date));
+
+    let totalHadir = 0, totalTelat = 0, totalIzin = 0, totalAlpha = 0;
+    const [year, month] = filterMonth.split('-');
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const todayStr = getTodayDateJakarta(); // ← PERBAIKAN
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${filterMonth}-${String(d).padStart(2, '0')}`;
+        const record = userAttendance.find(a => a.date === dateStr);
+        
+        if (record) {
+            if (record.status === 'Hadir') totalHadir++;
+            else if (record.status === 'Terlambat') totalTelat++;
+            else totalIzin++;
+        } else if (dateStr < todayStr) {
+            const dayOfWeek = new Date(dateStr).getDay();
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            if (!isWeekend) {
+                totalAlpha++;
+            }
         }
+    }
+
+    // ... sisanya sama, tapi pastikan semua penggunaan todayStr konsisten
+    
+    container.innerHTML = html;
+}
 
         function changePersonalUser(userId) {
             window.currentPersonalUser = parseInt(userId);
@@ -665,7 +512,11 @@ container.innerHTML = html;
         // --- EMPLOYEE: HOME (ATTENDANCE FORM) ---
 
         function renderEmpHome(container) {
-            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayStr = getTodayDateJakarta(); // ← DIGANTI INI
+            
+            console.log('=== RENDER EMP HOME ===');
+            console.log(' Today (Jakarta):', todayStr);
+            console.log(' Current User:', state.currentUser);
             const existing = state.attendance.find(a => a.user_id === state.currentUser.id && a.date === todayStr);
 
             let html = `
@@ -742,40 +593,61 @@ container.innerHTML = html;
             }
         }
 
-        async function submitAttendance(e) {
-            e.preventDefault();
-            const status = document.getElementById('att-status').value;
-            const time = document.getElementById('att-time').value;
-            const note = document.getElementById('att-note').value;
-            const date = new Date().toISOString().slice(0, 10);
+async function submitAttendance(e) {
+    e.preventDefault();
+    const status = document.getElementById('att-status').value;
+    const time = document.getElementById('att-time').value;
+    const note = document.getElementById('att-note').value;
+    const date = getTodayDateJakarta(); // ← PERBAIKAN
+    
+    console.log('=== SUBMIT ATTENDANCE ===');
+    console.log('📅 Date (Jakarta):', date);
+    console.log('👤 User ID:', state.currentUser.id);
+    console.log('📝 Status:', status);
 
-            // Validation
-            if (status === 'Terlambat' && !time) {
-                showToast('Mohon isi jam kedatangan', 'error');
-                return;
-            }
-            if (['Sakit', 'Izin', 'Dinas Luar'].includes(status) && !note) {
-                showToast('Mohon isi keterangan', 'error');
-                return;
-            }
+    // Validation
+    if (status === 'Terlambat' && !time) {
+        showToast('Mohon isi jam kedatangan', 'error');
+        return;
+    }
+    if (['Sakit', 'Izin', 'Dinas Luar'].includes(status) && !note.trim()) {
+        showToast('Mohon isi keterangan', 'error');
+        return;
+    }
 
-            // Save to Supabase
-            const attendanceData = {
-                userId: state.currentUser.id,
-                date: date,
-                status: status,
-                time: (status === 'Hadir' || status === 'Terlambat') 
-                    ? (time || new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})) 
-                    : '-',
-                note: note || '-'
-            };
+    // Double-check: apakah sudah absen hari ini?
+    const existingCheck = state.attendance.find(a => 
+        a.user_id === state.currentUser.id && a.date === date
+    );
+    
+    if (existingCheck) {
+        showToast('Anda sudah absen hari ini!', 'error');
+        console.log('⚠️ Already submitted today:', existingCheck);
+        renderContent();
+        return;
+    }
 
-            await createAttendance(attendanceData);
-            
-            // Refresh data
-            state.attendance = await fetchAttendance();
-            renderContent();
-        }
+    // Generate waktu otomatis jika tidak diisi
+    let finalTime = time;
+    if (!finalTime && (status === 'Hadir' || status === 'Terlambat')) {
+        finalTime = getCurrentTimeJakarta(); // ← PERBAIKAN
+    }
+
+    // Save to Supabase
+    const attendanceData = {
+        userId: state.currentUser.id,
+        date: date,
+        status: status,
+        time: finalTime || '-',
+        note: note || '-'
+    };
+
+    await createAttendance(attendanceData);
+    
+    // Refresh data
+    state.attendance = await fetchAttendance();
+    renderContent();
+}
 
         // --- EMPLOYEE: HISTORY ---
 
@@ -800,7 +672,7 @@ function renderEmpHistory(container) {
     let totalHadir = 0, totalTelat = 0, totalIzin = 0, totalAlpha = 0;
     const [year, month] = filterMonth.split('-');
     const daysInMonth = new Date(year, month, 0).getDate();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getTodayDateJakarta();
 
     // TAMBAHKAN INI - Deklarasi dayNames
     const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
