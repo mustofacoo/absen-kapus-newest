@@ -10,6 +10,33 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================
+// HELPER FUNCTIONS - TIMEZONE JAKARTA (UTC+7)
+// ============================================
+
+/**
+ * Dapatkan tanggal hari ini dalam timezone Jakarta (YYYY-MM-DD)
+ */
+function getTodayDateJakarta() {
+    const now = new Date();
+    const jakartaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const year = jakartaTime.getFullYear();
+    const month = String(jakartaTime.getMonth() + 1).padStart(2, '0');
+    const day = String(jakartaTime.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Dapatkan waktu sekarang dalam format HH:MM (timezone Jakarta)
+ */
+function getCurrentTimeJakarta() {
+    const now = new Date();
+    const jakartaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const hours = String(jakartaTime.getHours()).padStart(2, '0');
+    const minutes = String(jakartaTime.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
+// ============================================
 // DATABASE OPERATIONS
 // ============================================
 
@@ -199,7 +226,9 @@ async function fetchAttendanceByMonth(yearMonth) {
  */
 async function checkTodayAttendance(userId) {
     try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getTodayDateJakarta(); // ← DIGANTI INI
+        
+        console.log('🔍 Checking attendance for:', { userId, date: today });
         const { data, error } = await supabase
             .from('attendance')
             .select('*')
@@ -220,6 +249,32 @@ async function checkTodayAttendance(userId) {
  */
 async function createAttendance(attendanceData) {
     try {
+        // Validasi: cek apakah sudah absen hari ini
+        const todayDate = getTodayDateJakarta();
+        
+        console.log('💾 Creating attendance:', {
+            userId: attendanceData.userId,
+            date: attendanceData.date,
+            todayDate: todayDate,
+            status: attendanceData.status
+        });
+        
+        // Cek duplikasi
+        const { data: existingData, error: checkError } = await supabase
+            .from('attendance')
+            .select('*')
+            .eq('user_id', attendanceData.userId)
+            .eq('date', attendanceData.date);
+        
+        if (checkError) throw checkError;
+        
+        if (existingData && existingData.length > 0) {
+            console.log('⚠️ Already submitted today:', existingData[0]);
+            showToast('Anda sudah absen hari ini!', 'error');
+            return null;
+        }
+        
+        // Insert data baru
         const { data, error } = await supabase
             .from('attendance')
             .insert([{
