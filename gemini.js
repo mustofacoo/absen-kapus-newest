@@ -1190,8 +1190,8 @@ function renderEmpHistory(container) {
                     <div class="flex items-start gap-3">
                         <i class="fas fa-lightbulb text-yellow-500 mt-1"></i>
                         <div class="text-yellow-800">
-                            <p class="font-semibold mb-1">Tips</p>
-                            <p>Jangan lupa untuk absen setiap hari kerja! Anda masih bisa absen di hari Sabtu/Minggu jika ada keperluan.</p>
+                            <p class="font-semibold mb-1">Bismillah!</p>
+                            <p>Semoga Allah berkahi hari kita, sehingga segala usaha kita dapat membawa manfaat bagi umat!</p>
                         </div>
                     </div>
                 </div>
