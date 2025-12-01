@@ -755,7 +755,7 @@ function formatMonthYear(monthStr) {
             let html = `
                 <div class="max-w-2xl mx-auto fade-in">
                     <div class="bg-white rounded-lg shadow-lg p-6 mb-6 border-t-4 border-blue-600">
-                        <h2 class="text-2xl font-bold mb-1">Halo, ${state.currentUser.name}</h2>
+                        <h2 class="text-2xl font-bold mb-1">Assalamualaikum, ${state.currentUser.name}</h2>
                         <p class="text-slate-500 mb-6">${state.currentUser.position}</p>
             `;
 
@@ -782,7 +782,7 @@ function formatMonthYear(monthStr) {
                 html += `
                         <form onsubmit="submitAttendance(event)">
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-slate-700 mb-2">Status Kehadiran</label>
+                                <label class="block text-sm font-large text-slate-700 mb-2">PILIH STATUS ABSENSI DENGAN KLIK PILIHAN DIBAWAH</label>
                                 <select id="att-status" class="w-full border rounded px-3 py-2" onchange="toggleAttFields(this.value)">
                                     <option value="Hadir">Datang Tepat Waktu</option>
                                     <option value="Terlambat">Terlambat</option>
