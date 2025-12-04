@@ -173,6 +173,46 @@
             </form>
         </div>
     </div>
+    <div id="attendance-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-full max-w-md p-6 fade-in">
+        <h2 class="text-xl font-bold mb-1">Edit Absensi</h2>
+        <p class="text-sm text-slate-500 mb-4" id="modal-att-subtitle">Detail Pegawai</p>
+        
+        <form onsubmit="saveAttendanceCorrection(event)">
+            <input type="hidden" id="edit-att-userid">
+            <input type="hidden" id="edit-att-date">
+            
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Status Kehadiran</label>
+                <select id="edit-att-status" class="w-full border rounded px-3 py-2" required>
+                    <option value="Hadir">Hadir</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Dinas Luar">Dinas Luar</option>
+                    <option value="Alpha">Alpha (Hapus Data)</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Jam Masuk</label>
+                    <input type="time" id="edit-att-time" class="w-full border rounded px-3 py-2">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Catatan / Keterangan</label>
+                <textarea id="edit-att-note" class="w-full border rounded px-3 py-2" rows="2"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeAttendanceModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
     <script src="supabase.js"></script>
     <script src="gemini.js"></script>
 </body>
