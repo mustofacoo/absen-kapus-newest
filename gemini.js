@@ -611,8 +611,8 @@ function renderAdminPersonal(container) {
         const isToday = dateStr === todayStr;
         if (isToday) rowClass += ' ring-2 ring-blue-400';
 
-        html += `
-            <tr class="hover:bg-slate-50 ${rowClass}">
+html += `
+            <tr class="hover:bg-slate-50 ${rowClass} group transition-colors">
                 <td class="p-4 font-medium">
                     ${formatDate(dateStr)}
                     ${isToday ? '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Hari Ini</span>' : ''}
@@ -622,7 +622,14 @@ function renderAdminPersonal(container) {
                     <span class="px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">${status}</span>
                 </td>
                 <td class="p-4 text-slate-600 font-mono">${time}</td>
-                <td class="p-4 text-slate-500">${note}</td>
+                <td class="p-4 flex justify-between items-center">
+                    <span class="text-slate-500 truncate max-w-[150px]">${note}</span>
+                    
+                    <button onclick="openAttendanceModal(${selectedUser.id}, '${dateStr}', '${status}', '${time}', '${note}')" 
+                            class="text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity ml-2" title="Edit Absensi">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </td>
             </tr>
         `;
     }
@@ -635,6 +642,7 @@ function renderAdminPersonal(container) {
             <!-- Mobile Cards -->
             <div class="md:hidden divide-y divide-slate-100">
     `;
+    
 
     // Loop Detail Mobile
     for (let d = 1; d <= daysInMonth; d++) {
@@ -1250,6 +1258,78 @@ function changeEmpHistoryMonth(month) {
                 sidebar.classList.remove('flex');
             }
         }
+
+        // --- ADMIN: EDIT ATTENDANCE LOGIC ---
+
+function openAttendanceModal(userId, dateStr, currentStatus, currentTime, currentNote) {
+    const modal = document.getElementById('attendance-modal');
+    const user = state.users.find(u => u.id === userId);
+    
+    // Set Value ke Form
+    document.getElementById('edit-att-userid').value = userId;
+    document.getElementById('edit-att-date').value = dateStr;
+    document.getElementById('modal-att-subtitle').innerText = `${user.name} - ${formatDate(dateStr)}`;
+    
+    // Handle status jika 'Alpha', 'Libur', atau 'Belum Absen' -> Defaultkan ke 'Hadir' di dropdown
+    let statusVal = currentStatus;
+    if(['Alpha', 'Libur', 'Belum Absen', '-'].includes(currentStatus)) {
+        statusVal = 'Hadir'; 
+        // Jika Alpha, kosongkan jam & note
+        document.getElementById('edit-att-time').value = getCurrentTimeJakarta(); 
+        document.getElementById('edit-att-note').value = '';
+    } else {
+        document.getElementById('edit-att-time').value = (currentTime === '-') ? '' : currentTime;
+        document.getElementById('edit-att-note').value = (currentNote === '-') ? '' : currentNote;
+    }
+    
+    document.getElementById('edit-att-status').value = statusVal;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAttendanceModal() {
+    document.getElementById('attendance-modal').classList.add('hidden');
+    document.getElementById('attendance-modal').classList.remove('flex');
+}
+
+async function saveAttendanceCorrection(e) {
+    e.preventDefault();
+    
+    const userId = document.getElementById('edit-att-userid').value;
+    const date = document.getElementById('edit-att-date').value;
+    const status = document.getElementById('edit-att-status').value;
+    const time = document.getElementById('edit-att-time').value;
+    const note = document.getElementById('edit-att-note').value;
+
+    if (status === 'Alpha') {
+        // Jika Admin memilih "Alpha", berarti kita HAPUS data di database
+        if(confirm('Ubah status menjadi Alpha? Data kehadiran akan dihapus.')) {
+            // Kita perlu cari ID absensi dulu (agak tricky, tapi bisa pakai deleteAttendance logic)
+            // Cara cepat: Cari di state lokal
+            const record = state.attendance.find(a => a.user_id == userId && a.date == date);
+            if(record) {
+                await deleteAttendance(record.id);
+            }
+        }
+    } else {
+        // Simpan / Update (Upsert)
+        const payload = {
+            userId: parseInt(userId),
+            date: date,
+            status: status,
+            time: time || '-',
+            note: note || '-'
+        };
+        
+        await adminUpsertAttendance(payload);
+    }
+
+    // Refresh Data & UI
+    state.attendance = await fetchAttendance();
+    closeAttendanceModal();
+    renderAdminPersonal(document.getElementById('main-content'));
+}
 
         // Initialize App
         (async () => {
