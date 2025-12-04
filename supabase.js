@@ -341,6 +341,64 @@ async function deleteAttendance(id) {
     }
 }
 
+async function adminUpsertAttendance(dataPayload) {
+    try {
+        console.log('Admin changing attendance:', dataPayload);
+
+        // 1. Cek apakah data sudah ada untuk user & tanggal tersebut
+        const { data: existing, error: fetchError } = await supabase
+            .from('attendance')
+            .select('id')
+            .eq('user_id', dataPayload.userId)
+            .eq('date', dataPayload.date)
+            .single();
+
+        // Jika errornya bukan "data tidak ditemukan", lempar error
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+        let result;
+
+        if (existing) {
+            // A. DATA ADA -> Lakukan UPDATE
+            console.log('Record exists, updating...');
+            const { data, error } = await supabase
+                .from('attendance')
+                .update({
+                    status: dataPayload.status,
+                    time: dataPayload.time,
+                    note: dataPayload.note
+                })
+                .eq('id', existing.id)
+                .select();
+            if (error) throw error;
+            result = data;
+        } else {
+            // B. DATA TIDAK ADA (ALPHA) -> Lakukan INSERT
+            console.log('Record missing (Alpha), inserting new...');
+            const { data, error } = await supabase
+                .from('attendance')
+                .insert([{
+                    user_id: dataPayload.userId,
+                    date: dataPayload.date,
+                    status: dataPayload.status,
+                    time: dataPayload.time,
+                    note: dataPayload.note
+                }])
+                .select();
+            if (error) throw error;
+            result = data;
+        }
+
+        showToast('Data absensi berhasil diperbarui');
+        return result;
+
+    } catch (error) {
+        console.error('Error admin upsert:', error);
+        showToast('Gagal mengubah data absensi', 'error');
+        return null;
+    }
+}
+
 // ============================================
 // SEED INITIAL DATA (Opsional)
 // ============================================
